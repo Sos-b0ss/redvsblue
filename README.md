@@ -1,4 +1,4 @@
-This is all the steps for the first portion of the red.vs.blue pentest/kibana-dashboard analysis.
+These are all the steps for the first portion of the red.vs.blue pentest/kibana-dashboard analysis.
 
 In these steps you will be needing:
 
